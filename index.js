@@ -2,7 +2,11 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
 const client = new Client({
-  intents: [GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
   partials: [Partials.Channel]
 });
 
@@ -13,27 +17,23 @@ client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-// Only runs when a message is sent
+// The classic reaction behavior
 client.on('messageCreate', async (message) => {
 
-  // ignore bots
+  // Ignore bots (including itself)
   if (message.author.bot) return;
 
-  // ignore other channels (BIG optimization)
+  // Ignore other channels
   if (message.channel.id !== CHANNEL_ID) return;
 
-  // no attachments = ignore instantly
-  if (!message.attachments.size) return;
-
-  const file = message.attachments.first();
-
-  // only react to images
-  if (!file.contentType || !file.contentType.startsWith('image/')) return;
-
-  try {
-    await message.react(EMOJI);
-  } catch (err) {
-    console.log("Couldn't react:", err.message);
+  // Only react to messages with attachments
+  if (message.attachments.size > 0) {
+    try {
+      await message.react(EMOJI);
+      console.log(`Reacted to a message in ${message.channel.id}`);
+    } catch (err) {
+      console.log('Failed to react:', err.message);
+    }
   }
 });
 
