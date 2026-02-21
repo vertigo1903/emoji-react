@@ -1,5 +1,6 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
+const twitterWatcher = require('./twitterWatcher'); // 👈 add the watcher
 
 const client = new Client({
   intents: [
@@ -15,18 +16,21 @@ const EMOJI = process.env.EMOJI;
 
 client.once('ready', () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  // start twitter monitor
+  twitterWatcher(client);
 });
 
-// The classic reaction behavior
+// Reaction behavior
 client.on('messageCreate', async (message) => {
 
-  // Ignore bots (including itself)
+  // Ignore bots
   if (message.author.bot) return;
 
   // Ignore other channels
   if (message.channel.id !== CHANNEL_ID) return;
 
-  // Only react to messages with attachments
+  // Only react to images/files
   if (message.attachments.size > 0) {
     try {
       await message.react(EMOJI);
