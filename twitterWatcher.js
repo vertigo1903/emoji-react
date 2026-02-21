@@ -2,7 +2,7 @@ const Parser = require('rss-parser');
 const parser = new Parser();
 const fs = require('fs');
 
-const FEED_URL = "https://nitter.net/Pricerrors/rss";
+const FEED_URL = "https://nitter.net/PriceErrors/rss";
 const CHANNEL_ID = "1474598322235772988";
 
 const DATA_FILE = "./lastTweet.json";
