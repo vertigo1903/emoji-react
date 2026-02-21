@@ -36,7 +36,7 @@ client.on('messageCreate', async (message) => {
 
 async function checkTwitter() {
   try {
-    const res = await fetch('https://nitter.net/PriceErrors/rss');
+    const res = await fetch('https://nitter.poast.org/PriceErrors/rss');
     const text = await res.text();
 
     const match = text.match(/<link>(https:\/\/nitter.net\/PriceErrors\/status\/\d+)<\/link>/);
