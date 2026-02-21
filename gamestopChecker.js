@@ -1,90 +1,78 @@
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-
-const CHANNEL_ID = "1474611756361060362";
 
 const PRODUCTS = {
-  "1": { name: "2 Pack Blister", sku: "437070" },
-  "2": { name: "Elite Trainer Box", sku: "437099" },
-  "3": { name: "3 Pack Blister", sku: "437098" },
-  "4": { name: "Booster Bundle", sku: "200461" },
-  "5": { name: "Poster Collection", sku: "200462" },
-  "6": { name: "Mini Tins", sku: "200460" }
+  ps5: { name: "PlayStation 5", sku: "11108140" },
+  portal: { name: "PlayStation Portal", sku: "20005477" },
+  controller: { name: "DualSense Controller", sku: "11108141" }
 };
 
 async function checkStock(zip, sku) {
-  const url = `https://www.gamestop.com/api/stores/availability?sku=${sku}&zip=${zip}&radius=50`;
-
   try {
-    const res = await axios.get(url);
+    const res = await axios.get(`https://api.gamestop.com/stock/${sku}/${zip}`);
     return res.data.stores || [];
-  } catch (err) {
-    console.log("API error:", err.message);
-    return null;
+  } catch {
+    return [];
   }
 }
 
-module.exports = function (client) {
+module.exports = (client) => {
 
+  // send the panel once the bot starts
   client.once('ready', async () => {
-
-    const channel = await client.channels.fetch(CHANNEL_ID);
+    const channel = await client.channels.fetch(process.env.STOCK_CHANNEL);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("1").setLabel("2 Pack").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("2").setLabel("ETB").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("3").setLabel("3 Pack").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("4").setLabel("Booster Bundle").setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId("5").setLabel("Poster").setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId('ps5').setLabel('Check PS5').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('portal').setLabel('Check Portal').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId('controller').setLabel('Check Controller').setStyle(ButtonStyle.Secondary)
     );
 
     await channel.send({
-      content: "Select a product to check stock:",
+      content: "🎮 **Stock Checker Panel**",
       components: [row]
     });
 
-    console.log("Buttons sent.");
+    console.log("Stock panel sent");
   });
 
- client.on('interactionCreate', async interaction => {
+  // button handler
+  client.on('interactionCreate', async interaction => {
 
-  if (!interaction.isButton()) return;
+    if (!interaction.isButton()) return;
 
-  const product = PRODUCTS[interaction.customId];
-  if (!product) return;
+    const product = PRODUCTS[interaction.customId];
+    if (!product) return;
 
-  try {
+    try {
+      // instant reply to avoid timeout
+      await interaction.reply({
+        content: "Checking stock... ⏳",
+        ephemeral: true
+      });
 
-    // 👇 INSTANT reply so Discord never times out
-    await interaction.reply({
-      content: "Checking stock... ⏳",
-      ephemeral: true
-    });
+      const zip = "85204";
+      const stores = await checkStock(zip, product.sku);
 
-    const zip = "85204"; // change if needed
+      if (!stores.length) {
+        return interaction.editReply("No stock found nearby.");
+      }
 
-    const stores = await checkStock(zip, product.sku);
+      const embed = new EmbedBuilder()
+        .setColor(0x00ff99)
+        .setTitle(product.name)
+        .setDescription(
+          stores.slice(0, 10).map(s =>
+            `**${s.storeName}** — ${s.quantity} available`
+          ).join("\n")
+        );
 
-    if (!stores || stores.length === 0) {
-      return interaction.editReply("No stock found nearby.");
+      await interaction.editReply({ content: "", embeds: [embed] });
+
+    } catch (err) {
+      console.error(err);
+      if (interaction.replied)
+        await interaction.editReply("Something broke.");
     }
-
-    const embed = new EmbedBuilder()
-      .setColor(0x00ff99)
-      .setTitle(product.name)
-      .setDescription(
-        stores.slice(0, 10).map(s =>
-          `**${s.storeName}** — ${s.quantity} available`
-        ).join("\n")
-      );
-
-    await interaction.editReply({ content: "", embeds: [embed] });
-
-  } catch (err) {
-    console.error(err);
-
-    if (interaction.replied)
-      await interaction.editReply("Something broke.");
-  }
-
-});
+  });
+};
