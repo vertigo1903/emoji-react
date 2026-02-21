@@ -46,39 +46,45 @@ module.exports = function (client) {
     console.log("Buttons sent.");
   });
 
-  client.on('interactionCreate', async interaction => {
+ client.on('interactionCreate', async interaction => {
 
-    if (!interaction.isButton()) return;
+  if (!interaction.isButton()) return;
 
-    try {
-      await interaction.deferReply({ ephemeral: true });
+  const product = PRODUCTS[interaction.customId];
+  if (!product) return;
 
-      const product = PRODUCTS[interaction.customId];
-      if (!product) return interaction.editReply("Invalid product.");
+  try {
 
-      const zip = "85204"; // change if needed
+    // 👇 INSTANT reply so Discord never times out
+    await interaction.reply({
+      content: "Checking stock... ⏳",
+      ephemeral: true
+    });
 
-      const stores = await checkStock(zip, product.sku);
+    const zip = "85204"; // change if needed
 
-      if (!stores || stores.length === 0)
-        return interaction.editReply("No stock found nearby.");
+    const stores = await checkStock(zip, product.sku);
 
-      const embed = new EmbedBuilder()
-        .setColor(0x00ff99)
-        .setTitle(product.name)
-        .setDescription(
-          stores.slice(0, 10).map(s =>
-            `**${s.storeName}** — ${s.quantity} available`
-          ).join("\n")
-        );
-
-      interaction.editReply({ embeds: [embed] });
-
-    } catch (err) {
-      console.error(err);
-      interaction.editReply("Something broke.");
+    if (!stores || stores.length === 0) {
+      return interaction.editReply("No stock found nearby.");
     }
 
-  });
+    const embed = new EmbedBuilder()
+      .setColor(0x00ff99)
+      .setTitle(product.name)
+      .setDescription(
+        stores.slice(0, 10).map(s =>
+          `**${s.storeName}** — ${s.quantity} available`
+        ).join("\n")
+      );
 
-};
+    await interaction.editReply({ content: "", embeds: [embed] });
+
+  } catch (err) {
+    console.error(err);
+
+    if (interaction.replied)
+      await interaction.editReply("Something broke.");
+  }
+
+});
